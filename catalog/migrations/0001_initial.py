@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
                         max_length=50, verbose_name="Наименование категории"
                     ),
                 ),
-                ("description", models.TextField(verbose_name="Описание категории")),
+                ("description", models.TextField(max_length=100, verbose_name="Описание категории")),
             ],
             options={
                 "verbose_name": "Категория",
