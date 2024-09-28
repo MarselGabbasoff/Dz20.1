@@ -58,7 +58,7 @@ class Migration(migrations.Migration):
                 (
                     "description",
                     models.TextField(
-                        blank=True, null=True, verbose_name="Описание товара"
+                        blank=True, null=True, max_length=100, verbose_name="Описание товара"
                     ),
                 ),
                 (
