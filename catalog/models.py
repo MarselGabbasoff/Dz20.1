@@ -1,27 +1,9 @@
-from django.db import models
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
 from decimal import Decimal
-import os
+from django.db import models
+from catalog.utils import upload_to
+from users.models import User
 
 BLANK_NULL_TRUE = {"blank": True, "null": True}
-
-
-def upload_to(instance, filename):
-    """
-    Generate a file upload path based on the model type.
-
-    Args:
-        instance (models.Model): The model instance for which the file is being uploaded.
-        filename (str): The name of the file being uploaded.
-
-    Returns:
-        str: The path where the file will be saved, in the format 'uploads/<model_name>/<filename>'.
-
-    Example:
-        If the model is `Product` and the file name is `image.jpg`, the path will be `uploads/product/image.jpg`.
-    """
-    return f"uploads/{instance.__class__.__name__.lower()}/{filename}"
 
 
 class Category(models.Model):
@@ -62,6 +44,13 @@ class Product(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True, verbose_name="Дата последнего изменения"
     )
+    owner = models.ForeignKey(
+        User,
+        verbose_name="Владелец товара",
+        **BLANK_NULL_TRUE,
+        on_delete=models.SET_NULL,
+    )
+    is_published = models.BooleanField(default=False, verbose_name="Опубликован")
 
     def __str__(self):
         return self.name
@@ -70,6 +59,11 @@ class Product(models.Model):
         verbose_name = "Товар"
         verbose_name_plural = "Товары"
         ordering = ["name", "-price", "created_at", "-updated_at"]
+        permissions = [
+            ("can_unpublish_product", "Может отменить публикацию продукта"),
+            ("can_change_description", "Может изменить описание продукта"),
+            ("can_change_category", "Может изменить категорию продукта"),
+        ]
 
 
 class ContactInfo(models.Model):
@@ -89,15 +83,19 @@ class ContactInfo(models.Model):
         verbose_name_plural = "Контактные информации"
 
 
-@receiver(post_delete, sender=Product)
-def delete_image(sender, instance, **kwargs):
+class Version(models.Model):
     """
-    Delete the file from filesystem when the corresponding `Product` object is deleted.
+    Model for storing version product
+    """
 
-    Args:
-        sender (Type[models.Model]): The model class that sent the signal.
-        instance (Product): The instance of the model that is being deleted.
-    """
-    if instance.preview:
-        if os.path.isfile(instance.preview.path):
-            os.remove(instance.preview.path)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    version_number = models.CharField(max_length=50, verbose_name="Номер версии")
+    version_name = models.CharField(max_length=100, verbose_name="Название версии")
+    is_active = models.BooleanField(default=False, verbose_name="Активность версии")
+
+    def __str__(self):
+        return f"{self.version_name} - ({self.version_number})"
+
+    class Meta:
+        verbose_name = "Версия"
+        verbose_name_plural = "Версии"
